@@ -1,41 +1,3 @@
-#!/usr/bin/env python3
-
-# This alternative_service Python module is very similar to the regular
-# service.py, but with one additional feature: if this service receives a
-# USR1 kill signal, it will trigger main() right away. This lets you have a
-# service that periodically monitors something to see if action needs to be
-# taken, but also listen for the USR1 kill signal, which would cause the
-# service to check immediately if action needs to be taken
-#
-# To signal the process from bash would look something like this:
-#
-#   pkill -USR1 -f alternative_service.py
-#
-# This will search for a process with "alternative_service.py" in the name,
-# and send it the USR1 kill signal.
-#
-# If this process (alternative_service.py) runs as root, but your
-# signalling process runs as a different user, that user will need
-# permissions to send a signal to this process. One of the simplest ways to
-# do that is sudo. Add something like this to
-# /etc/sudoers.d/010_custom_rule:
-#
-#   USERNAME ALL=NOPASSWD:/usr/bin/pkill -f alternative_service.py -USR1
-#
-# Where USERNAME is the username you want to allow the ability to signal
-# your process.
-#
-# This will let USERNAME run:
-#
-#   sudo /usr/bin/pkill -f alternative_service.py -USR1
-#
-# without asking them for a password.
-#
-# If your signalling process is Python, rather then bash, you might need to
-# do something like this instead:
-#
-# import subprocess
-# subprocess.run("sudo /usr/bin/pkill -f alternative_service.py -USR1".split(), capture_output=True)
 
 ###########
 # Imports #
@@ -57,7 +19,7 @@ import configparser
 
 LOG_OUTPUT_FORMAT='%(asctime)s.%(msecs)03d |[%(levelname)-8s] : %(message)s'
 formatter=logging.Formatter(LOG_OUTPUT_FORMAT)
-file_handler = logging.FileHandler('/opt/progressa/service.log')
+file_handler = logging.FileHandler('/opt/progressa/logs/update-monitor-service.log')
 file_handler.setFormatter(formatter)
 #logger=logging.getLogger(__name__) 
 #logger.setLevel(logging.INFO)
@@ -98,10 +60,10 @@ script_name = os.path.basename(__file__)
 #logger = logging.getLogger("main")
 
 # How long to sleep, in seconds, when running in DEBUG mode
-DEBUG_SLEEP_TIME = 10
+DEBUG_SLEEP_TIME = 20
 
 # How long to sleep, in seconds, when running in non-DEBUG mode
-PRODUCTION_SLEEP_TIME = 60
+PRODUCTION_SLEEP_TIME = 20
 
 # List of email addresses to send emails to when something crashes
 ADMIN_EMAILS = ["vladimir.jz@hotmail.com"]

@@ -2,9 +2,10 @@
 # Unit Section #
 ################
 
-[Unit]
+[Unit] 
 
-Description= Progressa - Approval Monitor Service
+
+Description= Progressa - Update Balance Monitor Service
 
 # Notificar
 #OnFailure=status-email@%n.service
@@ -25,7 +26,7 @@ Description= Progressa - Approval Monitor Service
 Type=simple
 
 # Proceso base
-ExecStart=/opt/progressa/srv/approval-monitor/dev/bin/python3 /opt/progressa/srv/approval-monitor/pgssam.py
+ExecStart=/opt/progressa/srv/update-monitor/.env/bin/python3 /opt/progressa/srv/update-monitor/pgssum.py
 
 # Considerar la salida de python
 Environment="PYTHONUNBUFFERED=x"

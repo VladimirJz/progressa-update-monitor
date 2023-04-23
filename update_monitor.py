@@ -10,17 +10,17 @@ import datetime
 
 def main():
     is_available=False
-    CONFIG_FILE='/opt/progressa/safi.cfg'
+    CONFIG_FILE='/opt/progressa/srv/update-monitor/safi.cfg'
     start_job = datetime.datetime.now()
-    ws_config=Utils.load_settings(CONFIG_FILE,section='WEBSERVICES')
+    service_config=Utils.load_settings(CONFIG_FILE,section='SERVICE')
     log_config=Utils.load_settings(CONFIG_FILE,section='LOG')
     debug=False
     if log_config['servicelogtrace']==1:
         debug=True
 
-    endpoint=ws_config.get('bodesasaldos')
+    endpoint=service_config.get('updatebalanceendpoint')
     settings=Utils.load_settings(CONFIG_FILE)        
-    logger=Utils.log_handler('/opt/progressa/actualizasaldos.log')
+    logger=Utils.log_handler('/opt/progressa/logs/update-monitor.log')
 
     try :
         db=Connector(**settings)
