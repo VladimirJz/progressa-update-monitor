@@ -5,11 +5,19 @@ from safi.extras import Utils
 from safi.cmd  import *
 import datetime
 
+def log_path():
+    return
 
-
+def test():
+    output={'success':True,'message':'ERROR'}
+    print('testing...')
+    return False
 
 def main():
+    def log_path():
+        return log_file
 
+    output={'success':False,'message':''}
     def save_request(args,end_point=None,success=None):
         OBJETCTYPE=3
         SERVICEID= 3
@@ -32,14 +40,21 @@ def main():
 
     #----- Archivo de configuración
     CONFIG_FILE='/opt/progressa/srv/update-monitor/safi.cfg'
-    
-    service_settings=Utils.load_settings(CONFIG_FILE,section='SERVICE')
-    log_settings=Utils.load_settings(CONFIG_FILE,section='LOG')
-    settings=Utils.load_settings(CONFIG_FILE)
-    save_resposeWS=service_settings.get('saveresponseendpoint',None)
-    endpoint=service_settings.get('updatebalanceendpoint')
-    log_file=log_settings.get('logfile','')
-    logger=Utils.log_handler(log_file)        
+    try:
+        settings=Utils.load_settings(CONFIG_FILE)
+        log_settings=Utils.load_settings(CONFIG_FILE,section='LOG')
+        log_file=log_settings.get('logfile','')
+        service_settings=Utils.load_settings(CONFIG_FILE,section='SERVICE')
+        logger=Utils.log_handler(log_file)        
+        save_resposeWS=service_settings.get('saveresponseendpoint',None)
+        endpoint=service_settings.get('updatebalanceendpoint')
+    except Exception as e:
+        print(e)
+        logger.error(e)
+        return False
+        
+
+
 
     is_available=False
     start_job = datetime.datetime.now()
@@ -50,19 +65,22 @@ def main():
     try :
         db=Connector(**settings)
         is_available=db.is_available
-    except Exception:
+    except Exception as e:
         logger.critical('La Base de datos no esta disponible.' , exc_info=debug)
+        logger.critical(e)
+        return  False
 
     if is_available :
         logger.info('Conexión a la BD exitosa.')
-        saldos_actualizados=Request.Integracion(PGSS_SALDOSDIARIOS).add(Tipo='I')
+        saldos_actualizados=Request.Integracion(PGSS_SALDOSINSTRUMENTO).add(Instrumento='T')
         try:
             results=db.get(saldos_actualizados)
         except Exception:
             logger.critical('Error al ejecutar rutina ',exc_info=True)
+            return  False
             
         if(results.status_code==0):
-            logger.info(f'Información generada correctamente, registros  por procesar:{data.rowcount }')
+            logger.info(f'Información generada correctamente, registros  por procesar:{results.rowcount }')
             if(results.rowcount>0):
                 json_data=results.to_json(key='PrestamoId')
                 if not Utils.is_reachable(endpoint): 
@@ -90,6 +108,7 @@ def main():
                         except Exception as e:
                             logger.critical('Error al procesar la peticion POST.' , exc_info=True)
                             logger.critical(e)
+                            return False
                         
                         else:
                             response['status_code']=r.status_code
@@ -100,13 +119,14 @@ def main():
                         response['original_request']=str(json_string)
                         response['end_point']='http://10.90.0.71:28108/api/v1/ProductosProgressa/insert'
 
-                            return False
+                        return False
                     end_job = datetime.datetime.now()
                     elapsed_time=end_job-start_job
-                    logger.info('Procesados ' + str(data.rowcount) +' registros,   Exitosos:'  + str(success) + ', Fallidos:' + str(error)+ ', en ' +  str(elapsed_time.total_seconds())  + ' segundos.')
+                    logger.info('Procesados ' + str(results.rowcount) +' registros,   Exitosos:'  + str(success) + ', Fallidos:' + str(error)+ ', en ' +  str(elapsed_time.total_seconds())  + ' segundos.')
                     return True
                 else:
                     logger.critical('El endPoint no esta disponible.')
+
                     return False
             else:
                 logger.info('Terminado, No hay datos que procesar.')
