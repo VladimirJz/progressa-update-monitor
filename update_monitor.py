@@ -82,24 +82,26 @@ def main():
         if(results.status_code==0):
             logger.info(f'Información generada correctamente, registros  por procesar:{results.rowcount }')
             if(results.rowcount>0):
-                json_data=results.to_json(key='PrestamoId')
+                json_requests=results.to_json(key='PrestamoId')
                 if not Utils.is_reachable(endpoint): 
                     logger.info(f'El EndPoint esta disponible: { endpoint }')
                     success=0
                     error=0
                     logger.info(f'Comienza consumo del EndPoint.')
-                    for json_string in json_data:
+                    print(json_requests)
+                    for json in json_requests:
                         response={}
+                        print (json)
              
                         try :
-                            r=Utils.post(json_string,end_point=endpoint)
+                            r=Utils.post(response['string'],end_point=endpoint)
                             if(debug):
                                 logger.info(f'Petición exitosa, Endpoint Response: {r.status_code} -{r.reason}  -  elapsed at: { r.elapsed }')
                             if(not r.ok):
                                 error=error+1
                                 logger.warning(f'Petición rechazada, Response: {r.status_code} -{r.reason}  -  elapsed at: { r.elapsed }')
                                 logger.warning(f'Respuesta: {r.text}')
-                                logger.warning('= payload =========>>\n' + json_string)
+                                logger.warning('= payload =========>>\n' + json['string'],)
                                 logger.warning('<<===========payload=')
                             else:
                                 success=success+1
