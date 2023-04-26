@@ -1,4 +1,4 @@
-
+select * from PGSSSERVICIOKEY
 delimiter ;
 drop procedure if exists PGSSALDOSINSTRUMENTOREP;
 delimiter $$
@@ -67,31 +67,22 @@ TerminaStore: BEGIN
 			PRIMARY KEY (CreditoID)
 		);
 		
-		IF(Par_Tipo=Reporte_Global)THEN
-			BEGIN
-				INSERT INTO lista_creditos(CreditoID)
-					SELECT CreditoID 
-					FROM CREDITOS 
-					WHERE Estatus NOT IN ('P','K','C');
-				
-			END;
-		ELSE 
-			BEGIN
-				CASE Par_Instrumento
-				WHEN Instrumento_Cliente THEN 
-					BEGIN 
-						INSERT INTO lista_creditos
-							SELECT CreditoID 
-							FROM CREDITOS 
-							WHERE Estatus NOT IN ('P','K','C') AND ClienteID=Par_InstrumentoID;
-					END;
-				WHEN Instrumento_Credito THEN 
-					BEGIN 
-						INSERT INTO lista_creditos
-							SELECT CreditoID 
-							FROM CREDITOS 
-							WHERE Estatus NOT IN ('P','K','C') AND CreditoID=Par_InstrumentoID;
-					END;
+
+		CASE Par_Instrumento
+			WHEN Instrumento_Cliente THEN 
+				BEGIN 
+					INSERT INTO lista_creditos
+						SELECT CreditoID 
+						FROM CREDITOS 
+						WHERE Estatus NOT IN ('P','K','C') AND ClienteID=Par_InstrumentoID;
+				END;
+			WHEN Instrumento_Credito THEN 
+				BEGIN 
+					INSERT INTO lista_creditos
+						SELECT CreditoID 
+						FROM CREDITOS 
+						WHERE Estatus NOT IN ('P','K','C') AND CreditoID=Par_InstrumentoID;
+				END;
 			ELSE    
 					BEGIN
 						IF (Par_InstrumentoID = Entero_Cero)THEN
@@ -106,9 +97,8 @@ TerminaStore: BEGIN
 							FROM CREDITOSMOVS 
 							WHERE FechaOperacion=Var_FechaSistema AND CreditosMovsID>Var_TransaccionInicio AND CreditosMovsID<=Var_TransaccionFin;
 					END;
-				END CASE;
-			END;
-		END IF;
+			END CASE;
+
 		
 		
 		DROP TABLE IF EXISTS generales_cliente;
