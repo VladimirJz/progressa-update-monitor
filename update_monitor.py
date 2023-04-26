@@ -4,6 +4,7 @@ from safi.core import Request,Connector
 from safi.extras import Utils
 from safi.cmd  import *
 import datetime
+import requests.exceptions
 
 def log_path():
     return
@@ -42,7 +43,7 @@ def main():
 
     #----- Archivo de configuración
     CONFIG_FILE='/opt/progressa/srv/update-monitor/safi.cfg'
-
+    request_timeout=10
     script_path= os.path.dirname(__file__)
     current_script=os.path.basename(__file__)[:-3]
     DEFAULT_LOG_FILE=os.path.join(script_path +'/'+ current_script  + '.log')
@@ -127,7 +128,7 @@ def main():
              
                         try :
                             logger.debug(f'Procesando InstrumentoID { PrestamoId }')
-                            r=Utils.post(json_string,end_point=endpoint, timeout=3)
+                            r=Utils.post(json_string,end_point=endpoint, timeout=request_timeout)
                     
                             logger.debug(f'Se obtuvo respuesta por parte del Servidor.')
                             response['status_code']=r.status_code
@@ -143,10 +144,12 @@ def main():
                                 success=success+1
                                 logger.debug(f'Petición exitosa, Endpoint Response: {r.status_code} -{r.reason}  -  elapsed at: { r.elapsed }')
 
+                        except requests.exceptions.ReadTimeout:
+                                logger.error(f'Se alcanzó un timeout en la petición al endpoint despues de {request_timeout}s ')
                             
 
                         except Exception as e:
-                            logger.critical('Error al procesar la peticion, servidor no disponible.' , exc_info=True)
+                            logger.critical('Error al procesar la peticion, ocurrio un problema con la conexión.' , exc_info=True)
                             logger.critical(e)
                             response['status_code']=000
                             response['reason']='Ocurrio un error el procesar la petición.'
