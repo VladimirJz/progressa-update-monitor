@@ -13,7 +13,7 @@ from datetime import datetime
 import traceback
 
 import configparser
-from update_monitor import test,log_path
+from update_monitor import test,log_path,main
 
 ####################
 # Global Variables #
@@ -163,7 +163,7 @@ while True:
     try:
  
         logger_service.debug('Ejecutando rutina principal')
-        if not test():
+        if not main():
             fail_count=fail_count+1
             if(fail_count==1):
                 first_fail=datetime.now()
