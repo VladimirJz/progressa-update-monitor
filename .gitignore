@@ -1,1 +1,6 @@
 .env/
+env/
+service.lock
+safi.cfg
+update_monitor.log
+

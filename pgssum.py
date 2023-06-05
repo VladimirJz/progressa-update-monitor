@@ -18,8 +18,8 @@ from update_monitor import test,log_path,main
 ####################
 # Global Variables #
 ####################
-DEBUG_WAIT_TIME = 15
-PRODUCTION_WAIT_TIME = 20
+DEBUG_WAIT_TIME = 180
+PRODUCTION_WAIT_TIME = 180
 
 
 ADMIN_EMAILS = ["vladimir.jz@hotmail.com"]
