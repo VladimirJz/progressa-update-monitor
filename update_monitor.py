@@ -167,7 +167,11 @@ def main():
                                     success=success+1
                                     logger.debug(f'Petición exitosa, Endpoint Response: {r.status_code} -{r.reason}  -  elapsed at: { r.elapsed }')
 
-                            except requests.exceptions.ReadTimeout:
+                            except requests.exceptions.ReadTimeout as e:
+                                    error=error+1
+                                    response['status_code']=000
+                                    response['reason']='.'
+                                    response['message']=e
                                     logger.error(f'Se alcanzó un timeout en la petición al endpoint despues de {request_timeout}s ')
                                 
 
