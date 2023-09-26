@@ -13,7 +13,7 @@ from datetime import datetime
 import traceback
 
 import configparser
-from update_monitor import test,log_path,main
+from update_monitor_threads import test,log_path,main
 
 ####################
 # Global Variables #

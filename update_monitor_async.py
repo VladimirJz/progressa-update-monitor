@@ -5,6 +5,18 @@ from safi.extras import Utils
 from safi.cmd  import *
 import datetime
 import requests.exceptions
+from multiprocessing import Process,Pool
+import asyncio
+import functools
+
+import random
+import time
+
+
+def progress(n):
+    n=n+1
+    print(n, end='\r', flush=True)
+    #return n
 
 def log_path():
     return
@@ -34,6 +46,58 @@ def save_request(args,end_point=None,success=None):
     return r
 
 
+def task(endpoint,request_timeout,json_request):
+   
+    output=[]
+    response={}
+    credito_id=json_request['key']
+    json_string=json_request['string']
+
+
+    response['object_key']=int(credito_id)
+    response['original_request']=json_string
+    response['end_point']=endpoint
+  
+    sleep_time = random.uniform(19, 22)
+
+    time.sleep(sleep_time)
+    print(sleep_time)
+    
+    try:
+        #result=db.get(requests)
+        r=Utils.post(json_string,end_point=endpoint, timeout=request_timeout)
+        response['text']=r.text
+        response['status_code']=r.status_code
+        response['reason']=r.reason
+        response['message']=r.text
+        response['ok']=r.ok
+        response['elapsed']=str(r.elapsed)
+        
+        output.append(response)
+
+    except Exception as e:
+        #print(f' call ',requests.routine,'-', requests.parameters)
+        print(e)
+        response['status_code']=500
+        response['reason']="Task Exception"
+        response['text']="Ocurrio un error al procesar la tarea ."
+        response['message']= str(e)
+        response['ok']=False
+        output.append(response)
+        return response
+    
+    except requests.exceptions.ReadTimeout as e:
+        response['status_code']=504
+        response['reason']='Timeout Error'
+        response['text']=f'Se alcanzó el timeout despues de {request_timeout} segundos.'
+        response['message']=e
+        response['ok']=False
+        output.append(response)
+        return response
+    
+    return response
+
+
 def main():
     def log_path():
         return log_file
@@ -42,8 +106,10 @@ def main():
 
 
     #----- Archivo de configuración
+    NUM_THREADS=16
+    BLOCK_SIZE=16
     CONFIG_FILE='/opt/progressa/srv/update-monitor/safi.cfg'
-    request_timeout=5
+    request_timeout=20
     script_path= os.path.dirname(__file__)
     current_script=os.path.basename(__file__)[:-3]
     DEFAULT_LOG_FILE=os.path.join(script_path +'/'+ current_script  + '.log')
@@ -84,6 +150,8 @@ def main():
         print(e)
         return False
    
+    request_task=functools.partial(task,endpoint,request_timeout)
+
     debug=False
     if log_settings['servicelogtrace']==1:
         debug=True
@@ -135,63 +203,107 @@ def main():
                     logger.info(f'Procesando [{results.rowcount }] registros.')
                     json_requests=results.to_json(key='PrestamoId')
                     response_list=[]
+                    #print(json_requests)
+                    n=0
                     if True: 
                         logger.info(f'El EndPoint esta disponible: { endpoint }')
                         success=0
                         error=0
                         logger.debug(f'Comienza consumo del EndPoint.')
                         #print(json_requests)
-                        for json in json_requests:
-                            print('='*20)
-                            response={}
-                            #print (json)
-                            PrestamoId=json['key']
-                            json_string=json['string']
+                        #with concurrent.futures.ThreadPoolExecutor(NUM_THREADS) as executor:
+                        #    futures = [executor.submit(request_task, json) for json in json_requests]
+                        r#equest_results=as_completed(futures)
+                        #print(type(request_results))
+                        #print(request_results)
+                        with Pool(NUM_THREADS) as pool:
+                            n= n + len(request_list)
+                            async_results=pool.map_async(request_task, json_requests,chunksize=BLOCK_SIZE, callback=progress(n))
+                            pool.close() # for async
+                            pool.join() # for async 
+                        
+                        
+                        exitosos=0
+                        fallidos=0
+                        
+                        request_results=async_results.get( timeout=25)
+                        #print(type(async_results))
+                        
+                        for response in request_results:
+                            res=future.result()
+                            print(f'Procesado Registro : { res["object_key"]}, con Estatus= {res["status_code"]}')
+                            logger.debug(f'Procesado InstrumentoID :{ res["object_key"] }')
+
+                         
+                            if(not res["ok"]):
+                                error=error+1
+                                logger.error(f'Petición rechazada: [ Endpoint response: {res["status_code"]} -{res["reason"]}  -  elapsed at: { res["elapsed"] }]')
+                                logger.error(f'Respuesta: {res["status_code"]}')
+                                logger.error(f'Motivo: {res["reason"]}')
+                                logger.error(f'        {res["text"]}')
+                                logger.error(f'=>>\n { res["original_request"]} \n<<=')
+                                    
+                            else:
+                                success=success+1
+                                logger.debug(f'Petición exitosa : [ Endpoint response: {res["status_code"]} -{res["reason"]}  -  elapsed at: { res["elapsed"] } ]')
+                            
+                        #             error=error+1
+                            #print(res)
+                            #print(type(res))
+                           # block_results= res.get( timeout=60)
+                      
+                        ## CODIGO ORIGINAL 
+                        # for json in json_requests:
+                        #     print('='*20)
+                        #     response={}
+                        #     #print (json)
+                        #     PrestamoId=json['key']
+                        #     json_string=json['string']
                         
                 
-                            try :
-                                logger.debug(f'Procesando InstrumentoID { PrestamoId }')
-                                r=Utils.post(json_string,end_point=endpoint, timeout=request_timeout)
+                        #     try :
+                        #         logger.debug(f'Procesando InstrumentoID { PrestamoId }')
+                        #         r=Utils.post(json_string,end_point=endpoint, timeout=request_timeout)
                         
-                                logger.debug(f'Se obtuvo respuesta por parte del Servidor.')
-                                response['status_code']=r.status_code
-                                response['reason']=r.reason
-                                response['message']=r.text
-                                if(not r.ok):
-                                    error=error+1
-                                    logger.error(f'Petición rechazada, Response: {r.status_code} -{r.reason}  -  elapsed at: { r.elapsed }')
-                                    logger.error(f'Respuesta: {r.text}')
-                                    logger.error(f'=>>\n { json_string} \n<<=')
+                        #         logger.debug(f'Se obtuvo respuesta por parte del Servidor.')
+                        #         response['status_code']=r.status_code
+                        #         response['reason']=r.reason
+                        #         response['message']=r.text
+                        #         if(not r.ok):
+                        #             error=error+1
+                        #             logger.error(f'Petición rechazada, Response: {r.status_code} -{r.reason}  -  elapsed at: { r.elapsed }')
+                        #             logger.error(f'Respuesta: {r.text}')
+                        #             logger.error(f'=>>\n { json_string} \n<<=')
                                     
-                                else:
-                                    success=success+1
-                                    logger.debug(f'Petición exitosa, Endpoint Response: {r.status_code} -{r.reason}  -  elapsed at: { r.elapsed }')
+                        #         else:
+                        #             success=success+1
+                        #             logger.debug(f'Petición exitosa, Endpoint Response: {r.status_code} -{r.reason}  -  elapsed at: { r.elapsed }')
 
-                            except requests.exceptions.ReadTimeout as e:
-                                error=error+1
-                                response['status_code']=000
-                                response['reason']='.'
-                                response['message']=e
-                                logger.error(f'Se alcanzó un timeout en la petición al endpoint despues de {request_timeout}s ')
+                        #     except requests.exceptions.ReadTimeout as e:
+                        #         error=error+1
+                        #         response['status_code']=000
+                        #         response['reason']='.'
+                        #         response['message']=e
+                        #         logger.error(f'Se alcanzó un timeout en la petición al endpoint despues de {request_timeout}s ')
                             
 
-                            except Exception as e:
-                                error=error+1
-                                response['status_code']=000
-                                response['reason']='Ocurrio un error el procesar la petición.'
-                                response['message']=e
-                                logger.critical('Error al procesar la peticion, ocurrio un problema con la conexión.' , exc_info=True)
-                                logger.critical(e)
+                        #     except Exception as e:
+                        #         error=error+1
+                        #         response['status_code']=000
+                        #         response['reason']='Ocurrio un error el procesar la petición.'
+                        #         response['message']=e
+                        #         logger.critical('Error al procesar la peticion, ocurrio un problema con la conexión.' , exc_info=True)
+                        #         logger.critical(e)
 
                                 
-                            else:
+                        #     else:
                                         
-                                response['object_key']= int(PrestamoId)
-                                response['original_request']=json_string
-                                response['end_point']=endpoint
+                        #         response['object_key']= int(PrestamoId)
+                        #         response['original_request']=json_string
+                        #         response['end_point']=endpoint
 
-                                response_list.append(response)
-                                #print(response_list)
+                        #         response_list.append(response)
+                        #         #print(response_list)
 
 
 
@@ -211,9 +323,10 @@ def main():
                         logger.info(u'\u2502')
                         logger.info( u'\u2514' +  u'\u2500'  +  ' Se registra en bitacora de consumos WS...')
                         error=0
-                        for response in response_list:
+                        print('logger')
+                        for response in request_results:
                             try:
-                                r=save_request(response,end_point=save_req_endpoint ,success=True)
+                                r=save_request(res,end_point=save_req_endpoint ,success=True)
                                 #r=Utils.post(response ,end_point=save_req_endpoint)
                             except Exception as e:
                                 error=error+1
@@ -264,7 +377,9 @@ def main():
 #  RUN !
 #-------------------------------------------------------------------------
      
-main()
+if __name__ == '__main__':
+    main()
+
 
 #--------------------------------------------------------------------------
 
